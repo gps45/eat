@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Menú Digital Rápido</title>
+  <style>
+    :root {
+      --primary: #E63946;
+      --bg: #111315;
+      --card: #1b1e23;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --border: rgba(255,255,255,0.1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding-bottom: 90px; }
+    header { padding: 20px 16px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: center; }
+    header img { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary); }
+    .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; background: rgba(34,197,94,0.15); color: #4ade80; margin-top: 4px; }
+    .badge.cerrado { background: rgba(239,68,68,0.15); color: #f87171; }
+    .cats { display: flex; gap: 8px; overflow-x: auto; padding: 12px 16px; position: sticky; top: 0; background: var(--bg); z-index: 10; border-bottom: 1px solid var(--border); }
+    .cat-btn { background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 8px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap; font-size: 14px; }
+    .cat-btn.active { background: var(--primary); border-color: var(--primary); font-weight: 600; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; padding: 16px; max-width: 960px; margin: 0 auto; }
+    .item { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; display: flex; gap: 12px; padding: 10px; cursor: pointer; transition: transform .15s; }
+    .item:active { transform: scale(0.99); }
+    .item img { width: 88px; height: 88px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
+    .item-body { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    .item-title { font-weight: 700; font-size: 15px; }
+    .item-desc { color: var(--muted); font-size: 12px; margin-top: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .item-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+    .price { font-weight: 700; color: var(--primary); font-size: 15px; }
+    .agotado { opacity: 0.55; }
+    .tag-agotado { font-size: 11px; background: #ef4444; color: #fff; padding: 2px 6px; border-radius: 6px; font-weight: 600; }
+
+    /* Barra inferior del carrito */
+    .cart-bar { position: fixed; bottom: 14px; left: 16px; right: 16px; max-width: 928px; margin: 0 auto; background: var(--primary); color: #fff; padding: 14px 18px; border-radius: 14px; display: none; justify-content: space-between; align-items: center; font-weight: 700; cursor: pointer; box-shadow: 0 10px 25px rgba(0,0,0,0.45); z-index: 20; }
+
+    /* Modales */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: none; align-items: flex-end; justify-content: center; z-index: 50; }
+    @media (min-width: 640px) { .modal-backdrop { align-items: center; padding: 16px; } }
+    .modal-backdrop.open { display: flex; }
+    .modal { background: var(--card); border: 1px solid var(--border); width: 100%; max-width: 500px; max-height: 88vh; overflow-y: auto; border-radius: 20px 20px 0 0; padding: 20px; }
+    @media (min-width: 640px) { .modal { border-radius: 20px; } }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .close-btn { background: rgba(255,255,255,0.1); color: #fff; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 16px; }
+    .extra-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+    .field { margin-top: 12px; }
+    .field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+    .field input, .field select, .field textarea { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 14px; }
+    .btn-primary { width: 100%; margin-top: 16px; padding: 13px; border: none; border-radius: 12px; background: var(--primary); color: #fff; font-weight: 700; font-size: 15px; cursor: pointer; }
+    .cart-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); gap: 8px; }
+    .qty-box { display: flex; align-items: center; gap: 8px; }
+    .qty-box button { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: #fff; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <header>
+    <img id="logo" src="" alt="Logo" />
+    <div>
+      <h1 id="biz-name" style="font-size:19px;">Cargando...</h1>
+      <p id="biz-slogan" style="font-size:13px; color:var(--muted);"></p>
+      <span id="biz-status" class="badge">ABIERTO</span>
+    </div>
+  </header>
+
+  <div class="cats" id="cats"></div>
+  <main class="grid" id="menu"></main>
+
+  <div class="cart-bar" id="cart-bar" onclick="openCartModal()">
+    <span id="cart-count">0 items</span>
+    <span id="cart-total">$0.00</span>
+  </div>
+
+  <!-- Modal 1: Detalle y Extras -->
+  <div class="modal-backdrop" id="item-modal">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="m-title">Plato</h3>
+        <button class="close-btn" onclick="closeModal('item-modal')">✕</button>
+      </div>
+      <p id="m-desc" style="font-size:13px; color:var(--muted); margin-bottom:12px;"></p>
+      <div id="m-extras"></div>
+      <div class="field">
+        <label>Notas especiales (opcional)</label>
+        <input type="text" id="m-note" placeholder="Ej. Sin cebolla, bien cocido..." />
+      </div>
+      <button class="btn-primary" id="m-add-btn">Agregar al pedido</button>
+    </div>
+  </div>
+
+  <!-- Modal 2: Carrito y Checkout WhatsApp -->
+  <div class="modal-backdrop" id="cart-modal">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Tu Pedido</h3>
+        <button class="close-btn" onclick="closeModal('cart-modal')">✕</button>
+      </div>
+      <div id="cart-items"></div>
+      <div id="cart-summary" style="margin-top:12px; font-size:14px; line-height:1.7;"></div>
+
+      <div class="field">
+        <label>Tu nombre</label>
+        <input type="text" id="c-name" placeholder="Ej. Carlos Mendoza" required />
+      </div>
+      <div class="field">
+        <label>Tipo de entrega</label>
+        <select id="c-delivery" onchange="renderCart()">
+          <option value="Domicilio">A domicilio</option>
+          <option value="Retirar en local">Retirar en local</option>
+        </select>
+      </div>
+      <div class="field" id="address-field">
+        <label>Dirección o referencia</label>
+        <input type="text" id="c-address" placeholder="Calle, barrio o referencia" />
+      </div>
+      <div class="field">
+        <label>Método de pago</label>
+        <select id="c-payment"></select>
+      </div>
+      <button class="btn-primary" style="background:#16a34a;" onclick="sendWhatsApp()">Enviar pedido por WhatsApp</button>
+    </div>
+  </div>
+
+  <script>
+    // REEMPLAZA ESTE ID CON EL DE TU GOOGLE SHEET
+    const SHEET_ID = '1K6hvGEKgCuVbz0Mi7RaCuYbF-ES1Jtyk6O8Mo3o5KRg';
+
+    let config = {
+      nombre_negocio: 'Mi Restaurante',
+      slogan: '',
+      logo_url: '',
+      color_principal: '#E63946',
+      color_fondo: '#111315',
+      whatsapp: '593999999999',
+      moneda: '$',
+      costo_envio: '0',
+      metodos_pago: 'Efectivo, Transferencia',
+      estado_local: 'ABIERTO'
+    };
+
+    let items = [];
+    let activeCat = 'Todos';
+    let currentItem = null;
+    let cart = [];
+
+    function parseCSV(text) {
+      const rows = [];
+      let row = [], val = '', inQuotes = false;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i], next = text[i + 1];
+        if (ch === '"' && inQuotes && next === '"') { val += '"'; i++; }
+        else if (ch === '"') { inQuotes = !inQuotes; }
+        else if (ch === ',' && !inQuotes) { row.push(val.trim()); val = ''; }
+        else if ((ch === '\n' || ch === '\r') && !inQuotes) {
+          if (ch === '\r' && next === '\n') i++;
+          row.push(val.trim());
+          if (row.some(cell => cell !== '')) rows.push(row);
+          row = []; val = '';
+        } else { val += ch; }
+      }
+      if (row.length || val) { row.push(val.trim()); rows.push(row); }
+      return rows;
+    }
+
+    async function loadData() {
+      try {
+        const cfgRes = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Config`);
+        const cfgRows = parseCSV(await cfgRes.text()).slice(1);
+        cfgRows.forEach(([k, v]) => { if (k) config[k] = v; });
+
+        const menuRes = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Menu_Inventario`);
+        const menuRows = parseCSV(await menuRes.text()).slice(1);
+        items = menuRows.map(r => ({
+          id: r[0],
+          categoria: r[1] || 'General',
+          nombre: r[2] || '',
+          descripcion: r[3] || '',
+          precio: parseFloat(r[4]) || 0,
+          imagen: r[5] || '',
+          extras: (r[6] || '').split(',').map(e => e.trim()).filter(Boolean).map(e => {
+            const [label, price] = e.split(':');
+            return { label: label.trim(), price: parseFloat(price) || 0 };
+          }),
+          estado: (r[7] || 'DISPONIBLE').toUpperCase()
+        })).filter(x => x.nombre);
+      } catch (e) {
+        console.warn('Usando datos de respaldo si no hay conexión al Sheet:', e);
+        items = [
+          { id: '1', categoria: 'Hamburguesas', nombre: 'Doble Queso', descripcion: 'Doble carne y cheddar', precio: 6.5, imagen: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80', extras: [{ label: 'Extra tocino', price: 1 }], estado: 'DISPONIBLE' }
+        ];
+      }
+      applyTheme();
+      renderCategories();
+      renderMenu();
+    }
+
+    function applyTheme() {
+      document.documentElement.style.setProperty('--primary', config.color_principal || '#E63946');
+      document.documentElement.style.setProperty('--bg', config.color_fondo || '#111315');
+      document.title = config.nombre_negocio;
+      document.getElementById('biz-name').textContent = config.nombre_negocio;
+      document.getElementById('biz-slogan').textContent = config.slogan;
+      if (config.logo_url) document.getElementById('logo').src = config.logo_url;
+
+      const statusEl = document.getElementById('biz-status');
+      const abierto = (config.estado_local || 'ABIERTO').toUpperCase() === 'ABIERTO';
+      statusEl.textContent = abierto ? 'ABIERTO' : 'CERRADO';
+      statusEl.className = abierto ? 'badge' : 'badge cerrado';
+
+      const paySelect = document.getElementById('c-payment');
+      paySelect.innerHTML = (config.metodos_pago || 'Efectivo')
+        .split(',').map(m => `<option value="${m.trim()}">${m.trim()}</option>`).join('');
+    }
+
+    function renderCategories() {
+      const cats = ['Todos', ...new Set(items.map(i => i.categoria))];
+      const el = document.getElementById('cats');
+      el.innerHTML = cats.map(c => `<button class="cat-btn ${c === activeCat ? 'active' : ''}" onclick="selectCat('${c.replace(/'/g, "\\'")}')">${c}</button>`).join('');
+    }
+
+    function selectCat(cat) {
+      activeCat = cat;
+      renderCategories();
+      renderMenu();
+    }
+
+    function renderMenu() {
+      const list = activeCat === 'Todos' ? items : items.filter(i => i.categoria === activeCat);
+      const container = document.getElementById('menu');
+      container.innerHTML = list.map(item => {
+        const agotado = item.estado === 'AGOTADO';
+        return `
+          <div class="item ${agotado ? 'agotado' : ''}" onclick="${agotado ? '' : `openItemModal('${item.id}')`}">
+            ${item.imagen ? `<img src="${item.imagen}" alt="${item.nombre}" loading="lazy" />` : ''}
+            <div class="item-body">
+              <div>
+                <div class="item-title">${item.nombre}</div>
+                <div class="item-desc">${item.descripcion}</div>
+              </div>
+              <div class="item-foot">
+                <span class="price">${config.moneda}${item.precio.toFixed(2)}</span>
+                ${agotado ? '<span class="tag-agotado">AGOTADO</span>' : '<span style="font-size:12px; color:var(--muted);">Elegir +</span>'}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openItemModal(id) {
+      currentItem = items.find(i => i.id === id);
+      if (!currentItem) return;
+      document.getElementById('m-title').textContent = currentItem.nombre;
+      document.getElementById('m-desc').textContent = currentItem.descripcion;
+      document.getElementById('m-note').value = '';
+      document.getElementById('m-extras').innerHTML = currentItem.extras.map((ex, idx) => `
+        <label class="extra-row">
+          <span><input type="checkbox" class="ex-check" data-idx="${idx}" /> ${ex.label}</span>
+          <span>+${config.moneda}${ex.price.toFixed(2)}</span>
+        </label>
+      `).join('');
+      document.getElementById('m-add-btn').onclick = addCurrentToCart;
+      document.getElementById('item-modal').classList.add('open');
+    }
+
+    function addCurrentToCart() {
+      const checked = [...document.querySelectorAll('.ex-check:checked')].map(el => currentItem.extras[el.dataset.idx]);
+      const extrasTotal = checked.reduce((acc, e) => acc + e.price, 0);
+      const unitPrice = currentItem.precio + extrasTotal;
+      const note = document.getElementById('m-note').value.trim();
+
+      cart.push({
+        uid: Date.now() + Math.random(),
+        nombre: currentItem.nombre,
+        extras: checked.map(e => e.label),
+        note,
+        unitPrice,
+        qty: 1
+      });
+      closeModal('item-modal');
+      updateCartBar();
+    }
+
+    function updateCartBar() {
+      const count = cart.reduce((a, b) => a + b.qty, 0);
+      const sub = cart.reduce((a, b) => a + b.unitPrice * b.qty, 0);
+      const bar = document.getElementById('cart-bar');
+      if (count === 0) {
+        bar.style.display = 'none';
+        return;
+      }
+      bar.style.display = 'flex';
+      document.getElementById('cart-count').textContent = `${count} producto(s) — Ver pedido`;
+      document.getElementById('cart-total').textContent = `${config.moneda}${sub.toFixed(2)}`;
+    }
+
+    function openCartModal() {
+      renderCart();
+      document.getElementById('cart-modal').classList.add('open');
+    }
+
+    function renderCart() {
+      const box = document.getElementById('cart-items');
+      if (cart.length === 0) {
+        box.innerHTML = '<p style="color:var(--muted);">Tu carrito está vacío.</p>';
+        document.getElementById('cart-summary').innerHTML = '';
+        return;
+      }
+      box.innerHTML = cart.map((c, i) => `
+        <div class="cart-row">
+          <div>
+            <div style="font-weight:600; font-size:14px;">${c.nombre}</div>
+            ${c.extras.length ? `<div style="font-size:12px; color:var(--muted);">+ ${c.extras.join(', ')}</div>` : ''}
+            ${c.note ? `<div style="font-size:12px; color:#fbbf24;">Nota: ${c.note}</div>` : ''}
+            <div style="font-size:13px; color:var(--primary);">${config.moneda}${(c.unitPrice * c.qty).toFixed(2)}</div>
+          </div>
+          <div class="qty-box">
+            <button onclick="changeQty(${i}, -1)">-</button>
+            <span>${c.qty}</span>
+            <button onclick="changeQty(${i}, 1)">+</button>
+          </div>
+        </div>
+      `).join('');
+
+      const delivery = document.getElementById('c-delivery').value;
+      document.getElementById('address-field').style.display = delivery === 'Domicilio' ? 'block' : 'none';
+      const sub = cart.reduce((a, b) => a + b.unitPrice * b.qty, 0);
+      const env = delivery === 'Domicilio' ? (parseFloat(config.costo_envio) || 0) : 0;
+      document.getElementById('cart-summary').innerHTML = `
+        <div>Subtotal: <b>${config.moneda}${sub.toFixed(2)}</b></div>
+        <div>Envío (${delivery}): <b>${config.moneda}${env.toFixed(2)}</b></div>
+        <div style="font-size:16px; margin-top:4px;">Total: <b>${config.moneda}${(sub + env).toFixed(2)}</b></div>
+      `;
+    }
+
+    function changeQty(index, delta) {
+      cart[index].qty += delta;
+      if (cart[index].qty <= 0) cart.splice(index, 1);
+      updateCartBar();
+      renderCart();
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    function sendWhatsApp() {
+      if (!cart.length) return;
+      const name = document.getElementById('c-name').value.trim() || 'Cliente';
+      const delivery = document.getElementById('c-delivery').value;
+      const address = document.getElementById('c-address').value.trim();
+      const payment = document.getElementById('c-payment').value;
+      const sub = cart.reduce((a, b) => a + b.unitPrice * b.qty, 0);
+      const env = delivery === 'Domicilio' ? (parseFloat(config.costo_envio) || 0) : 0;
+
+      let lines = [`*Nuevo pedido — ${config.nombre_negocio}*`, `Cliente: ${name}`, `Entrega: ${delivery}`];
+      if (delivery === 'Domicilio' && address) lines.push(`Dirección: ${address}`);
+      lines.push(`Pago: ${payment}`, '', '*Detalle:*');
+      cart.forEach(c => {
+        lines.push(`• ${c.qty}x ${c.nombre} (${config.moneda}${(c.unitPrice * c.qty).toFixed(2)})`);
+        if (c.extras.length) lines.push(`   Extras: ${c.extras.join(', ')}`);
+        if (c.note) lines.push(`   Nota: ${c.note}`);
+      });
+      lines.push('', `Subtotal: ${config.moneda}${sub.toFixed(2)}`);
+      if (env > 0) lines.push(`Envío: ${config.moneda}${env.toFixed(2)}`);
+      lines.push(`*Total a pagar: ${config.moneda}${(sub + env).toFixed(2)}*`);
+
+      const phone = (config.whatsapp || '').replace(/\D/g, '');
+      const url = `https://wa.me/${phone}?text=${encodeURIComponent(lines.join('\n'))}`;
+      window.open(url, '_blank');
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
